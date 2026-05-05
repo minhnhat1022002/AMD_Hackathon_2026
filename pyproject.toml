@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hospitality-ai-optimization"
+version = "0.1.0"
+description = "Sample AI Hospitality Optimization & Strategy module."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "crewai>=0.98.0",
+  "langchain-core>=0.3.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.115.0", "uvicorn>=0.30.0"]
+dev = ["pytest>=8.0.0", "ruff>=0.6.0", "mypy>=1.10.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

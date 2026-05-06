@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from hospitality_ai.domain.enums import (
     AlertSeverity,
@@ -118,3 +118,31 @@ class StrategyRecommendation:
     pricing_actions: list[RecommendationAction]
     monitoring_status: PipelineStatus
     summary: str
+
+
+@dataclass(frozen=True)
+class TripPriceQuery:
+    """Trip.com price collection query."""
+
+    hotel_urls: list[str] = field(default_factory=list)
+    hotel_names: list[str] = field(default_factory=list)
+    check_in_dates: list[date] = field(default_factory=list)
+    check_out_date: Optional[date] = None
+    adults: int = 2
+    children: int = 0
+    rooms: int = 1
+    currency: Optional[str] = None
+    include_raw: bool = True
+
+
+@dataclass(frozen=True)
+class TripPriceCollection:
+    """Processed Trip.com price collection result."""
+
+    source: str
+    run_at: datetime
+    total_raw_records: int
+    normalized_records: list[PricingRecord]
+    skipped_records: int
+    run_metric: CrawlerRunMetric
+    raw_response: Mapping[str, Any]

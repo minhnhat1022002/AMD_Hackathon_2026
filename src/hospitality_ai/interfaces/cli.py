@@ -23,7 +23,7 @@ def main() -> None:
     )
     parser.add_argument(
         "command",
-        choices=["pricing-insight", "performance-monitoring"],
+        choices=["pricing-insight", "performance-monitoring", "trip-price"],
     )
     parser.add_argument(
         "--format",
@@ -45,10 +45,15 @@ def main() -> None:
         result = PricingInsightAgent(
             container["pricing_service"],
         ).run()
-    else:
+    elif args.command == "performance-monitoring":
         result = PerformanceMonitoringAgent(
             container["monitoring_service"],
         ).run()
+    else:
+        result = container["trip_price_service"].collect(
+            container["trip_price_query"],
+        )
+        result = to_jsonable(result)
 
     if args.format == "json":
         print(json.dumps(to_jsonable(result), indent=2))
@@ -74,11 +79,36 @@ def build_container(settings: Settings) -> dict[str, Any]:
     from hospitality_ai.infrastructure.mcp.mock_crawler_client import (
         MockCrawlerClient,
     )
+    from hospitality_ai.infrastructure.mcp.trip_mcp_crawler_client import (
+        TripMcpCrawlerClient,
+    )
+    from hospitality_ai.infrastructure.mcp.trip_price_api_client import (
+        MockTripPriceApiClient,
+        TripOtaPriceApiClient,
+    )
     from hospitality_ai.infrastructure.repositories import (
         InMemoryPricingRepository,
     )
+    from hospitality_ai.application.trip_price_service import TripPriceService
 
-    crawler_client = MockCrawlerClient()
+    trip_api_client = (
+        TripOtaPriceApiClient(
+            base_url=settings.trip_price_api_base_url,
+            timeout_seconds=settings.trip_price_api_timeout_seconds,
+        )
+        if settings.trip_price_api_mode == "http"
+        else MockTripPriceApiClient()
+    )
+    trip_price_service = TripPriceService(trip_api_client)
+    trip_price_query = settings.build_trip_price_query()
+    crawler_client = (
+        TripMcpCrawlerClient(
+            trip_price_service=trip_price_service,
+            query=trip_price_query,
+        )
+        if settings.crawler_source == "trip-api"
+        else MockCrawlerClient()
+    )
     pricing_repository = InMemoryPricingRepository()
     llm_client = MockLLMClient(model_name=settings.llm_model)
     recommendation_service = RecommendationService(
@@ -106,6 +136,8 @@ def build_container(settings: Settings) -> dict[str, Any]:
         "pricing_repository": pricing_repository,
         "llm_client": llm_client,
         "recommendation_service": recommendation_service,
+        "trip_price_service": trip_price_service,
+        "trip_price_query": trip_price_query,
         "pricing_service": pricing_service,
         "monitoring_service": monitoring_service,
     }
@@ -121,6 +153,23 @@ def _format_text(result: dict[str, Any]) -> str:
                 "competitor_avg={average_competitor_price}, "
                 "gap={price_gap_percentage}%, recommendation={recommendation}"
                 .format(**insight),
+            )
+        return "\n".join(lines).strip()
+
+    if "normalized_records" in result:
+        lines = [
+            (
+                "Trip Price API: {total_raw_records} raw records, "
+                "{skipped_records} skipped"
+            ).format(**result),
+            "",
+        ]
+        for record in result["normalized_records"]:
+            lines.append(
+                "{hotel_id} {room_type} {check_in_date}: "
+                "price={price}, tax={tax}, discount={discount}".format(
+                    **record,
+                ),
             )
         return "\n".join(lines).strip()
 

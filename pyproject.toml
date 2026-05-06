@@ -14,9 +14,14 @@ dependencies = [
   "python-dotenv>=1.0.0",
 ]
 
+[project.scripts]
+hospitality-ai = "hospitality_ai.interfaces.cli:main"
+hospitality-trip-mcp = "hospitality_ai.infrastructure.mcp.trip_price_server:main"
+
 [project.optional-dependencies]
 api = ["fastapi>=0.115.0", "uvicorn>=0.30.0"]
 dev = ["pytest>=8.0.0", "ruff>=0.6.0", "mypy>=1.10.0"]
+mcp = ["mcp>=1.6.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

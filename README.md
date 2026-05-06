@@ -86,6 +86,7 @@ LLM or OTA API key is required.
 ```bash
 python -m hospitality_ai.interfaces.cli pricing-insight
 python -m hospitality_ai.interfaces.cli performance-monitoring
+python -m hospitality_ai.interfaces.cli trip-price
 ```
 
 Text output is also available:
@@ -93,7 +94,58 @@ Text output is also available:
 ```bash
 python -m hospitality_ai.interfaces.cli pricing-insight --format text
 python -m hospitality_ai.interfaces.cli performance-monitoring --format text
+python -m hospitality_ai.interfaces.cli trip-price --format text
 ```
+
+## Trip Price API / MCP Integration
+
+The project includes a Trip.com price integration based on `ota-crawl`:
+
+- `ota-crawl` collects Trip prices through `POST /v1/prices/collect/trip`.
+- `TripOtaPriceApiClient` calls that endpoint.
+- `TripPriceService` processes the OTA response and normalizes records into
+  `PricingRecord`.
+- `TripMcpCrawlerClient` exposes the processed Trip data through the same
+  crawler contract used by Pricing Insight and Performance Monitoring.
+- `trip_price_server.py` exposes MCP tools when the optional `mcp` package is
+  installed.
+
+Run the local mock Trip Price API processing demo:
+
+```bash
+python -m hospitality_ai.interfaces.cli trip-price
+```
+
+Use processed Trip data as the crawler source for existing workflows:
+
+```bash
+HOSPITALITY_CRAWLER_SOURCE=trip-api \
+HOSPITALITY_TRIP_PRICE_API_MODE=mock \
+python -m hospitality_ai.interfaces.cli pricing-insight
+```
+
+To call a real running `ota-crawl` service:
+
+```bash
+HOSPITALITY_CRAWLER_SOURCE=trip-api \
+HOSPITALITY_TRIP_PRICE_API_MODE=http \
+HOSPITALITY_TRIP_PRICE_API_BASE_URL=http://localhost:8000 \
+HOSPITALITY_OWN_HOTEL_ID=<trip_property_id> \
+HOSPITALITY_TRIP_HOTEL_URLS=<own_trip_url>,<competitor_trip_url> \
+python -m hospitality_ai.interfaces.cli pricing-insight
+```
+
+Run the Trip MCP server after installing the MCP extra:
+
+```bash
+pip install -e ".[mcp]"
+hospitality-trip-mcp
+```
+
+Available MCP tools:
+
+- `collect_trip_prices`: returns the full processed collection object.
+- `collect_trip_pricing_records`: returns normalized pricing records only.
 
 ## Run Tests
 

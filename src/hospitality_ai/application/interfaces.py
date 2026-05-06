@@ -14,6 +14,7 @@ from hospitality_ai.domain.models import (
     MonitoringReport,
     PricingInsightReport,
     PricingRecord,
+    TripPriceQuery,
 )
 
 
@@ -48,3 +49,13 @@ class LLMClient(Protocol):
 
     def summarize_monitoring(self, report: MonitoringReport) -> str:
         """Summarize a monitoring report."""
+
+
+class TripPriceApiClient(Protocol):
+    """Port for collecting Trip.com price data."""
+
+    async def collect_prices(
+        self,
+        query: TripPriceQuery,
+    ) -> Mapping[str, Any]:
+        """Collect Trip.com price data from API, MCP, or mock adapter."""

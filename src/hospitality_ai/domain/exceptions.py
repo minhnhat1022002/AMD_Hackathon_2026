@@ -13,3 +13,7 @@ class InvalidPricingRecordError(HospitalityAIError):
 
 class CrawlerClientError(HospitalityAIError):
     """Raised when a crawler client cannot fetch required data."""
+
+
+class LLMClientError(HospitalityAIError):
+    """Raised when an LLM client cannot generate a summary."""

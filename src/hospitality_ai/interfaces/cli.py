@@ -75,6 +75,7 @@ def build_container(settings: Settings) -> dict[str, Any]:
     )
     from hospitality_ai.infrastructure.llm.langchain_client import (
         MockLLMClient,
+        OpenAICompatibleLLMClient,
     )
     from hospitality_ai.infrastructure.mcp.mock_crawler_client import (
         MockCrawlerClient,
@@ -110,7 +111,18 @@ def build_container(settings: Settings) -> dict[str, Any]:
         else MockCrawlerClient()
     )
     pricing_repository = InMemoryPricingRepository()
-    llm_client = MockLLMClient(model_name=settings.llm_model)
+    llm_client = (
+        OpenAICompatibleLLMClient(
+            api_key=settings.llm_api_key,
+            model_name=settings.llm_model,
+            base_url=settings.llm_base_url,
+            timeout_seconds=settings.llm_timeout_seconds,
+            temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
+        )
+        if settings.use_real_llm
+        else MockLLMClient(model_name=settings.llm_model)
+    )
     recommendation_service = RecommendationService(
         threshold_percent=settings.recommendation_threshold_percent,
     )

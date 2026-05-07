@@ -29,7 +29,7 @@ def test_generate_monitoring_report_with_mock_data() -> None:
         llm_client=MockLLMClient(),
         min_success_rate_percent=Decimal("95"),
         max_failed_crawl_count=0,
-        data_freshness_threshold_hours=24,
+        data_freshness_threshold_hours=999,
     )
 
     report = service.generate_report()

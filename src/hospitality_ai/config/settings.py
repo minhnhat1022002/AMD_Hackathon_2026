@@ -10,6 +10,14 @@ from decimal import Decimal
 from hospitality_ai.domain.models import TripPriceQuery
 
 
+def _load_dotenv_if_available() -> None:
+    try:
+        from dotenv import load_dotenv
+    except Exception:
+        return
+    load_dotenv()
+
+
 def _get_decimal(name: str, default: str) -> Decimal:
     return Decimal(os.getenv(name, default))
 
@@ -57,6 +65,11 @@ class Settings:
     max_failed_crawl_count: int
     use_real_llm: bool
     llm_model: str
+    llm_base_url: str
+    llm_api_key: str | None
+    llm_timeout_seconds: float
+    llm_temperature: float
+    llm_max_tokens: int
     mcp_server_url: str
     crawler_source: str
     trip_price_api_mode: str
@@ -75,6 +88,7 @@ class Settings:
     def from_env(cls) -> "Settings":
         """Create settings from environment variables with local defaults."""
 
+        _load_dotenv_if_available()
         return cls(
             own_hotel_id=os.getenv("HOSPITALITY_OWN_HOTEL_ID", "hotel_own"),
             recommendation_threshold_percent=_get_decimal(
@@ -94,7 +108,21 @@ class Settings:
                 "2",
             ),
             use_real_llm=_get_bool("HOSPITALITY_USE_REAL_LLM", "false"),
-            llm_model=os.getenv("HOSPITALITY_LLM_MODEL", "mock-llm"),
+            llm_model=os.getenv("HOSPITALITY_LLM_MODEL", "gpt-4o-mini"),
+            llm_base_url=os.getenv(
+                "HOSPITALITY_LLM_BASE_URL",
+                "https://api.openai.com/v1",
+            ),
+            llm_api_key=(
+                os.getenv("HOSPITALITY_LLM_API_KEY")
+                or os.getenv("OPENAI_API_KEY")
+            ),
+            llm_timeout_seconds=_get_float(
+                "HOSPITALITY_LLM_TIMEOUT_SECONDS",
+                "60",
+            ),
+            llm_temperature=_get_float("HOSPITALITY_LLM_TEMPERATURE", "0.2"),
+            llm_max_tokens=_get_int("HOSPITALITY_LLM_MAX_TOKENS", "500"),
             mcp_server_url=os.getenv(
                 "HOSPITALITY_MCP_SERVER_URL",
                 "http://localhost:8765",

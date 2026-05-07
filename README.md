@@ -81,6 +81,28 @@ Copy `.env.example` to `.env` if you want to override defaults. The first
 version runs with mock MCP data and deterministic mock summaries, so no external
 LLM or OTA API key is required.
 
+## Use A Real LLM
+
+By default, summaries use `MockLLMClient`. To call a real OpenAI-compatible
+chat completion API, set:
+
+```bash
+HOSPITALITY_USE_REAL_LLM=true
+HOSPITALITY_LLM_MODEL=gpt-4o-mini
+HOSPITALITY_LLM_BASE_URL=https://api.openai.com/v1
+HOSPITALITY_LLM_API_KEY=<your_api_key>
+```
+
+Then run any workflow:
+
+```bash
+PYTHONPATH=src python3 -m hospitality_ai.interfaces.cli pricing-insight
+PYTHONPATH=src python3 -m hospitality_ai.interfaces.cli performance-monitoring
+```
+
+For local or AMD/OpenAI-compatible gateways, change `HOSPITALITY_LLM_BASE_URL`
+to that provider's `/v1` endpoint and set the matching model name.
+
 ## Run The Demo CLI
 
 ```bash

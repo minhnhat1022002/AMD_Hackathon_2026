@@ -8,6 +8,7 @@ from __future__ import annotations
 from hospitality_ai.config.settings import Settings
 from hospitality_ai.interfaces.cli import build_container
 from hospitality_ai.interfaces.serialization import to_jsonable
+from hospitality_ai.interfaces.trip_price_api import create_trip_price_router
 
 
 def create_app():
@@ -21,15 +22,26 @@ def create_app():
         ) from exc
 
     app = FastAPI(title="Hospitality AI Optimization API")
-    container = build_container(Settings.from_env())
+    app.include_router(create_trip_price_router())
+
+    def get_container() -> dict:
+        return build_container(Settings.from_env())
 
     @app.get("/pricing-insight")
     def pricing_insight() -> dict:
+        container = get_container()
+        report = container["pricing_service"].generate_report()
+        return to_jsonable(report)
+
+    @app.get("/price-insight")
+    def price_insight() -> dict:
+        container = get_container()
         report = container["pricing_service"].generate_report()
         return to_jsonable(report)
 
     @app.get("/performance-monitoring")
     def performance_monitoring() -> dict:
+        container = get_container()
         report = container["monitoring_service"].generate_report()
         return to_jsonable(report)
 

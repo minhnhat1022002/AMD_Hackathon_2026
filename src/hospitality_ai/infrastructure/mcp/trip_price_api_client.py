@@ -16,7 +16,11 @@ from hospitality_ai.domain.models import TripPriceQuery
 class TripOtaPriceApiClient:
     """HTTP adapter for the ota-crawl Trip price endpoint."""
 
-    def __init__(self, base_url: str, timeout_seconds: float = 90.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        timeout_seconds: float | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
 
@@ -41,10 +45,7 @@ class TripOtaPriceApiClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(
-                request,
-                timeout=self._timeout_seconds,
-            ) as response:
+            with urllib.request.urlopen(request, timeout=None) as response:
                 response_body = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode("utf-8", errors="replace")

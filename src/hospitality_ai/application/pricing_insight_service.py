@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from datetime import date, datetime, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 from hospitality_ai.application.interfaces import (
@@ -13,14 +13,24 @@ from hospitality_ai.application.interfaces import (
     LLMClient,
     PricingRepository,
 )
+from hospitality_ai.application.pricing_market_matcher import (
+    select_comparable_rooms_deterministically,
+)
 from hospitality_ai.application.recommendation_service import (
     RecommendationService,
 )
 from hospitality_ai.domain.enums import Platform
-from hospitality_ai.domain.exceptions import InvalidPricingRecordError
+from hospitality_ai.domain.exceptions import (
+    InvalidPricingRecordError,
+    LLMClientError,
+)
 from hospitality_ai.domain.models import (
+    ComparableRoomSelection,
+    CompetitorRoomPricingContext,
+    OwnRoomPricingContext,
     PricingInsight,
     PricingInsightReport,
+    PricingMarketContext,
     PricingRecord,
 )
 
@@ -95,6 +105,7 @@ class PricingInsightService:
             generated_at=datetime.now(timezone.utc),
             insights=insights,
             summary="",
+            pricing_records=filtered_records,
         )
         summary = self._llm_client.summarize_pricing_insight(report)
         return PricingInsightReport(
@@ -102,6 +113,7 @@ class PricingInsightService:
             generated_at=report.generated_at,
             insights=report.insights,
             summary=summary,
+            pricing_records=report.pricing_records,
         )
 
     def _normalize_valid_records(
@@ -156,35 +168,178 @@ class PricingInsightService:
         own_records_by_key: dict[tuple[str, date], list[PricingRecord]] = (
             defaultdict(list)
         )
-        competitor_records_by_key: dict[
-            tuple[str, date],
-            list[PricingRecord],
-        ] = defaultdict(list)
+        competitor_records: list[PricingRecord] = []
 
         for record in records:
             key = (record.room_type, record.check_in_date)
             if record.hotel_id == self._own_hotel_id:
                 own_records_by_key[key].append(record)
             else:
-                competitor_records_by_key[key].append(record)
+                competitor_records.append(record)
 
+        market_context, competitor_records_by_id = self._build_market_context(
+            own_records_by_key=own_records_by_key,
+            competitor_records=competitor_records,
+        )
+        selections = self._select_comparable_rooms(market_context)
+        selections_by_key = {
+            selection.room_key: selection for selection in selections
+        }
+
+        own_room_contexts_by_key = {
+            room.room_key: room for room in market_context.own_rooms
+        }
         insights: list[PricingInsight] = []
-        for key in sorted(own_records_by_key.keys(), key=lambda item: item[1]):
-            own_records = own_records_by_key[key]
-            competitor_records = competitor_records_by_key.get(key, [])
+        grouped_own_records = sorted(
+            own_records_by_key.items(),
+            key=lambda item: (item[0][1], item[0][0].lower()),
+        )
+        for index, (key, own_records) in enumerate(grouped_own_records, 1):
+            room_key = _build_room_key(index)
+            own_room_context = own_room_contexts_by_key[room_key]
+            selection = selections_by_key.get(room_key)
+            if selection is None:
+                selection = self._fallback_selection(
+                    market_context,
+                    own_room_context,
+                )
+            selected_competitor_records = [
+                competitor_records_by_id[record_id]
+                for record_id in selection.comparable_record_ids
+                if record_id in competitor_records_by_id
+            ]
+            if (
+                not selected_competitor_records
+                and _has_same_date_competitors(
+                    market_context,
+                    own_room_context.check_in_date,
+                )
+            ):
+                selection = self._fallback_selection(
+                    market_context,
+                    own_room_context,
+                )
+                selected_competitor_records = [
+                    competitor_records_by_id[record_id]
+                    for record_id in selection.comparable_record_ids
+                    if record_id in competitor_records_by_id
+                ]
             insight = self._build_single_insight(
                 key=key,
                 own_records=own_records,
-                competitor_records=competitor_records,
+                competitor_records=selected_competitor_records,
+                selection=selection,
             )
             insights.append(insight)
         return insights
+
+    def _build_market_context(
+        self,
+        own_records_by_key: Mapping[tuple[str, date], list[PricingRecord]],
+        competitor_records: Sequence[PricingRecord],
+    ) -> tuple[PricingMarketContext, dict[str, PricingRecord]]:
+        grouped_own_records = sorted(
+            own_records_by_key.items(),
+            key=lambda item: (item[0][1], item[0][0].lower()),
+        )
+        own_rooms: list[OwnRoomPricingContext] = []
+        own_dates: set[date] = set()
+        for index, (key, own_records) in enumerate(grouped_own_records, 1):
+            current_price = quantize_money(
+                _average([record.total_price for record in own_records]),
+            )
+            own_dates.add(key[1])
+            own_rooms.append(
+                OwnRoomPricingContext(
+                    room_key=_build_room_key(index),
+                    room_type=key[0],
+                    check_in_date=key[1],
+                    current_price=current_price,
+                )
+            )
+
+        competitor_rooms: list[CompetitorRoomPricingContext] = []
+        competitor_records_by_id: dict[str, PricingRecord] = {}
+        relevant_competitors = [
+            record
+            for record in competitor_records
+            if record.check_in_date in own_dates
+        ]
+        sorted_competitors = sorted(
+            relevant_competitors,
+            key=lambda record: (
+                record.check_in_date,
+                record.hotel_id,
+                record.room_type.lower(),
+                record.total_price,
+            ),
+        )
+        for index, record in enumerate(sorted_competitors, 1):
+            record_id = f"cmp_{index:03d}"
+            competitor_records_by_id[record_id] = record
+            competitor_rooms.append(
+                CompetitorRoomPricingContext(
+                    record_id=record_id,
+                    hotel_id=record.hotel_id,
+                    hotel_name=record.hotel_name,
+                    room_type=record.room_type,
+                    check_in_date=record.check_in_date,
+                    total_price=quantize_money(record.total_price),
+                )
+            )
+
+        return (
+            PricingMarketContext(
+                own_hotel_id=self._own_hotel_id,
+                own_rooms=own_rooms,
+                competitor_rooms=competitor_rooms,
+            ),
+            competitor_records_by_id,
+        )
+
+    def _select_comparable_rooms(
+        self,
+        market_context: PricingMarketContext,
+    ) -> list[ComparableRoomSelection]:
+        if not market_context.own_rooms:
+            return []
+
+        try:
+            selections = list(
+                self._llm_client.select_comparable_rooms(market_context),
+            )
+        except LLMClientError as exc:
+            logger.warning(
+                "LLM comparable-room selection failed, using fallback: %s",
+                exc,
+            )
+            return select_comparable_rooms_deterministically(market_context)
+
+        if not selections:
+            return select_comparable_rooms_deterministically(market_context)
+        return selections
+
+    def _fallback_selection(
+        self,
+        market_context: PricingMarketContext,
+        own_room_context: OwnRoomPricingContext,
+    ) -> ComparableRoomSelection:
+        fallback_context = PricingMarketContext(
+            own_hotel_id=market_context.own_hotel_id,
+            own_rooms=[own_room_context],
+            competitor_rooms=market_context.competitor_rooms,
+        )
+        selections = select_comparable_rooms_deterministically(
+            fallback_context,
+        )
+        return selections[0]
 
     def _build_single_insight(
         self,
         key: tuple[str, date],
         own_records: Sequence[PricingRecord],
         competitor_records: Sequence[PricingRecord],
+        selection: ComparableRoomSelection,
     ) -> PricingInsight:
         own_prices = [record.total_price for record in own_records]
         current_price = quantize_money(_average(own_prices))
@@ -215,6 +370,12 @@ class PricingInsightService:
             current_price=current_price,
             average_competitor_price=average_competitor_price,
         )
+        recommended_price = quantize_money(
+            self._recommendation_service.recommend_target_price(
+                current_price=current_price,
+                average_competitor_price=average_competitor_price,
+            )
+        )
 
         return PricingInsight(
             room_type=key[0],
@@ -227,6 +388,13 @@ class PricingInsightService:
             price_gap_percentage=price_gap_percentage,
             recommendation=recommendation,
             competitor_count=len(competitor_records),
+            recommended_price=recommended_price,
+            benchmark_basis=selection.benchmark_basis,
+            benchmark_reasoning=selection.reasoning,
+            confidence=selection.confidence,
+            competitor_room_types=sorted(
+                {record.room_type for record in competitor_records},
+            ),
         )
 
 
@@ -234,6 +402,20 @@ def _average(values: Sequence[Decimal]) -> Decimal:
     if not values:
         return Decimal("0")
     return sum(values, Decimal("0")) / Decimal(len(values))
+
+
+def _build_room_key(index: int) -> str:
+    return f"own_{index:03d}"
+
+
+def _has_same_date_competitors(
+    market_context: PricingMarketContext,
+    check_in_date: date,
+) -> bool:
+    return any(
+        room.check_in_date == check_in_date
+        for room in market_context.competitor_rooms
+    )
 
 
 def _parse_platform(value: Any) -> Platform:

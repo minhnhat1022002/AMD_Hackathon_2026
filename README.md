@@ -111,6 +111,76 @@ python -m hospitality_ai.interfaces.cli performance-monitoring
 python -m hospitality_ai.interfaces.cli trip-price
 ```
 
+## Run Local Services Together
+
+Use this when you want `ota-crawl` and `hospitality_ai` running at the same
+time:
+
+```bash
+python scripts/run_local_services.py
+```
+
+Prerequisites:
+
+```bash
+pip install -e ".[api]"
+pip install -r ota-crawl/requirements.txt
+```
+
+Defaults:
+
+- `ota-crawl`: `http://localhost:8000`
+- `hospitality_ai`: `http://localhost:8100`
+- `hospitality_ai` calls Trip Price API through
+  `HOSPITALITY_TRIP_PRICE_API_BASE_URL=http://localhost:8000`
+- Own hotel ID defaults to `119242771`
+- Trip URLs default to:
+  - `kin-hotel-dong-du`
+  - `silverland-jolie-ho-chi-minh-city`
+  - `icon-saigon-luxury-design-hotel`
+  - `bong-sen-hotel-saigon`
+- Check-in defaults to the day the script starts, check-out is the next day.
+
+Trigger pricing insight:
+
+```bash
+curl http://localhost:8100/pricing-insight
+```
+
+Alias:
+
+```bash
+curl http://localhost:8100/price-insight
+```
+
+The response includes:
+
+- `pricing_records`: normalized Trip `PricingRecord` rows from own hotel and
+  competitors.
+- `insights`: computed current price, competitor average, price gap, and
+  recommendation. When competitor room names differ, the LLM selects
+  comparable competitor `record_id` values first; the service then computes
+  the benchmark from those selected records instead of averaging every
+  competitor room on the same date.
+- `recommended_price`: target price that closes part of the gap to the
+  comparable benchmark.
+- `summary`: LLM or mock-LLM business recommendation context.
+
+Override ports if needed:
+
+```bash
+OTA_CRAWL_PORT=8001 \
+HOSPITALITY_API_PORT=8101 \
+python scripts/run_local_services.py
+```
+
+If your `ota-crawl` module needs a custom start command:
+
+```bash
+OTA_CRAWL_COMMAND='python path/to/ota-crawl/main.py' \
+python scripts/run_local_services.py
+```
+
 Text output is also available:
 
 ```bash
@@ -121,10 +191,11 @@ python -m hospitality_ai.interfaces.cli trip-price --format text
 
 ## Trip Price API / MCP Integration
 
-The project includes a Trip.com price integration based on `ota-crawl`:
+The project includes a small embedded Trip.com price API based on the
+`ota-crawl` response contract:
 
-- `ota-crawl` collects Trip prices through `POST /v1/prices/collect/trip`.
-- `TripOtaPriceApiClient` calls that endpoint.
+- The FastAPI app exposes `POST /v1/prices/collect/trip`.
+- `TripOtaPriceApiClient` can call that endpoint over HTTP.
 - `TripPriceService` processes the OTA response and normalizes records into
   `PricingRecord`.
 - `TripMcpCrawlerClient` exposes the processed Trip data through the same
@@ -138,6 +209,34 @@ Run the local mock Trip Price API processing demo:
 python -m hospitality_ai.interfaces.cli trip-price
 ```
 
+Run the embedded FastAPI app:
+
+```bash
+pip install -e ".[api]"
+PYTHONPATH=src uvicorn "hospitality_ai.interfaces.api:create_app" \
+  --factory \
+  --host 0.0.0.0 \
+  --port 8000
+```
+
+Call the embedded Trip endpoint:
+
+```bash
+curl -X POST http://localhost:8000/v1/prices/collect/trip \
+  -H "Content-Type: application/json" \
+  -d '{
+    "hotel_urls": [
+      "https://www.trip.com/hotels/detail?hotelId=hotel_own",
+      "https://www.trip.com/hotels/detail?hotelId=hotel_comp_a"
+    ],
+    "check_in_date": "2026-06-01",
+    "check_out_date": "2026-06-02",
+    "adults": 2,
+    "rooms": 1,
+    "currency": "VND"
+  }'
+```
+
 Use processed Trip data as the crawler source for existing workflows:
 
 ```bash
@@ -146,7 +245,20 @@ HOSPITALITY_TRIP_PRICE_API_MODE=mock \
 python -m hospitality_ai.interfaces.cli pricing-insight
 ```
 
-To call a real running `ota-crawl` service:
+To call a local `ota-crawl` service through the HTTP adapter and transform its
+raw Trip response into compact LLM-ready data:
+
+```bash
+HOSPITALITY_TRIP_PRICE_API_MODE=http \
+HOSPITALITY_TRIP_PRICE_API_BASE_URL=http://localhost:8000 \
+HOSPITALITY_OWN_HOTEL_ID=<trip_property_id> \
+HOSPITALITY_TRIP_HOTEL_URLS=<trip_url> \
+HOSPITALITY_TRIP_CHECK_IN_DATES=2026-05-15 \
+HOSPITALITY_TRIP_CHECK_OUT_DATE=2026-05-16 \
+python -m hospitality_ai.interfaces.cli trip-price
+```
+
+To use that transformed Trip data inside Pricing Insight:
 
 ```bash
 HOSPITALITY_CRAWLER_SOURCE=trip-api \

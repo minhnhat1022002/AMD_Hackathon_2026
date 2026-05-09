@@ -10,9 +10,11 @@ from __future__ import annotations
 from typing import Any, Mapping, Protocol, Sequence
 
 from hospitality_ai.domain.models import (
+    ComparableRoomSelection,
     CrawlerRunMetric,
     MonitoringReport,
     PricingInsightReport,
+    PricingMarketContext,
     PricingRecord,
     TripPriceQuery,
 )
@@ -40,6 +42,12 @@ class PricingRepository(Protocol):
 
 class LLMClient(Protocol):
     """Port for creating business-friendly text summaries."""
+
+    def select_comparable_rooms(
+        self,
+        context: PricingMarketContext,
+    ) -> Sequence[ComparableRoomSelection]:
+        """Select competitor rooms comparable to each own room/date."""
 
     def summarize_pricing_insight(
         self,

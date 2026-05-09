@@ -41,6 +41,32 @@ class RecommendationService:
             return RecommendationAction.DECREASE_PRICE
         return RecommendationAction.KEEP_PRICE
 
+    def recommend_target_price(
+        self,
+        current_price: Decimal,
+        average_competitor_price: Decimal,
+    ) -> Decimal:
+        """Recommend a concrete target price from a market benchmark.
+
+        The target closes half of the gap to the comparable competitor
+        benchmark. This avoids recommending abrupt jumps while still providing
+        an actionable number.
+        """
+
+        if average_competitor_price <= Decimal("0"):
+            return current_price
+
+        action = self.recommend_price(
+            current_price=current_price,
+            average_competitor_price=average_competitor_price,
+        )
+        if action == RecommendationAction.KEEP_PRICE:
+            return current_price
+
+        return current_price + (
+            average_competitor_price - current_price
+        ) / Decimal("2")
+
     def build_strategy_recommendation(
         self,
         pricing_report: PricingInsightReport,

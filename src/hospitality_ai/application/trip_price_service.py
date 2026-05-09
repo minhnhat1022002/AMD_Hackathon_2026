@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Optional, Sequence
@@ -133,6 +134,35 @@ def to_crawler_payloads(
     ]
 
 
+def to_llm_ready_trip_payload(
+    collection: TripPriceCollection,
+) -> dict[str, Any]:
+    """Build compact Trip price data suitable for LLM prompts."""
+
+    return {
+        "source": collection.source,
+        "run_at": collection.run_at.isoformat(),
+        "total_raw_records": collection.total_raw_records,
+        "normalized_record_count": len(collection.normalized_records),
+        "skipped_records": collection.skipped_records,
+        "records": [
+            {
+                "hotel_id": record.hotel_id,
+                "hotel_name": record.hotel_name,
+                "platform": record.platform.value,
+                "room_type": record.room_type,
+                "check_in_date": record.check_in_date.isoformat(),
+                "price_before_tax": str(record.price),
+                "tax": str(record.tax),
+                "discount": str(record.discount),
+                "total_price": str(record.total_price),
+                "crawled_at": record.crawled_at.isoformat(),
+            }
+            for record in collection.normalized_records
+        ],
+    }
+
+
 def _extract_result_document(
     raw_response: Mapping[str, Any],
 ) -> Mapping[str, Any]:
@@ -163,26 +193,10 @@ def _normalize_trip_record(
     if raw_record.get("is_found") is False:
         return None
 
-    price_after_tax = _first_decimal(
-        raw_record,
-        [
-            "price_after_tax",
-            "after_tax_price",
-            "price_including_tax",
-            "total_price",
-        ],
-    )
-    price_before_tax = _first_decimal(
-        raw_record,
-        [
-            "price_before_tax",
-            "before_tax_price",
-            "price_excluding_tax",
-            "nightly_price",
-            "base_price",
-        ],
-    )
-    tax = _first_decimal(raw_record, ["tax_and_fee", "tax", "fee"])
+    price_components = _extract_price_components(raw_record)
+    price_before_tax = price_components["price_before_tax"]
+    price_after_tax = price_components["price_after_tax"]
+    tax = price_components["tax"]
 
     if price_before_tax is None and price_after_tax is None:
         return None
@@ -193,10 +207,12 @@ def _normalize_trip_record(
     if tax is None:
         tax = max(price_after_tax - price_before_tax, Decimal("0"))
 
-    discount = _first_decimal(
-        raw_record,
-        ["discount", "discount_amount"],
-    ) or Decimal("0")
+    discount = (
+        price_components["discount"]
+        if price_components["discount"] is not None
+        else Decimal("0")
+    )
+
     check_in_date = _parse_date(
         _first_present(
             raw_record,
@@ -235,6 +251,113 @@ def _normalize_trip_record(
     )
 
 
+def _extract_price_components(
+    raw_record: Mapping[str, Any],
+) -> dict[str, Optional[Decimal]]:
+    raw = raw_record.get("raw")
+    raw_payload = raw if isinstance(raw, Mapping) else {}
+    raw_price_info = raw_payload.get("price_info")
+    price_info = raw_price_info if isinstance(raw_price_info, Mapping) else {}
+    raw_total_price_info = raw_payload.get("total_price_info")
+    total_price_info = (
+        raw_total_price_info
+        if isinstance(raw_total_price_info, Mapping)
+        else {}
+    )
+
+    price_before_tax = _first_decimal(
+        price_info,
+        ["price", "displayPrice", "basePrice", "salePrice", "roomPrice"],
+    ) or _first_decimal(
+        raw_record,
+        [
+            "price_before_tax",
+            "before_tax_price",
+            "price_excluding_tax",
+            "nightly_price",
+            "base_price",
+        ],
+    )
+
+    price_after_tax = _extract_total_price(total_price_info) or _first_decimal(
+        raw_record,
+        [
+            "price_after_tax",
+            "after_tax_price",
+            "price_including_tax",
+            "total_price",
+        ],
+    )
+    tax = _extract_tax(total_price_info)
+    if tax is None and price_before_tax is not None and price_after_tax:
+        tax = max(price_after_tax - price_before_tax, Decimal("0"))
+    if tax is None:
+        tax = _first_decimal(raw_record, ["tax", "fee", "tax_and_fee"])
+
+    discount = _first_decimal(
+        raw_record,
+        ["discount", "discount_amount"],
+    )
+
+    return {
+        "price_before_tax": price_before_tax,
+        "price_after_tax": price_after_tax,
+        "tax": tax,
+        "discount": discount,
+    }
+
+
+def _extract_total_price(
+    total_price_info: Mapping[str, Any],
+) -> Optional[Decimal]:
+    total_no_approx = total_price_info.get("totalNoApprox")
+    if isinstance(total_no_approx, Mapping):
+        total = _to_decimal(total_no_approx.get("content"))
+        if total is not None:
+            return total
+
+    total = total_price_info.get("total")
+    if isinstance(total, Mapping):
+        parsed_total = _to_decimal(total.get("content"))
+        if parsed_total is not None:
+            return parsed_total
+
+    quantity_days = total_price_info.get("quantityDays")
+    if isinstance(quantity_days, Mapping):
+        return _to_decimal(quantity_days.get("content"))
+
+    return _first_decimal(
+        total_price_info,
+        ["price", "totalPrice", "amount", "payAmount"],
+    )
+
+
+def _extract_tax(
+    total_price_info: Mapping[str, Any],
+) -> Optional[Decimal]:
+    pay_tax = total_price_info.get("payTax")
+    if isinstance(pay_tax, Mapping):
+        tax = _first_decimal(pay_tax, ["price", "content"])
+        if tax is not None:
+            return tax
+
+        items = pay_tax.get("items")
+        if isinstance(items, list):
+            item_values = [
+                _to_decimal(item.get("content"))
+                for item in items
+                if isinstance(item, Mapping)
+            ]
+            item_values = [item for item in item_values if item is not None]
+            if item_values:
+                return sum(item_values, Decimal("0"))
+
+    return _first_decimal(
+        total_price_info,
+        ["tax", "tax_and_fee", "fee"],
+    )
+
+
 def _first_present(
     record: Mapping[str, Any],
     keys: Sequence[str],
@@ -257,6 +380,23 @@ def _first_decimal(
 def _to_decimal(value: Any) -> Optional[Decimal]:
     if value in (None, "", [], {}):
         return None
+    if isinstance(value, str):
+        text = value.strip()
+        direct_text = text.replace(",", "")
+        try:
+            return Decimal(direct_text)
+        except (InvalidOperation, ValueError):
+            matches = re.findall(r"\d[\d\s,.]*", text)
+            if not matches:
+                return None
+            candidate = max(
+                matches,
+                key=lambda item: len(re.sub(r"\D", "", item)),
+            )
+            digits = re.sub(r"\D", "", candidate)
+            if not digits:
+                return None
+            return Decimal(digits)
     try:
         return Decimal(str(value))
     except (InvalidOperation, ValueError):

@@ -51,6 +51,11 @@ class PricingInsight:
     price_gap_percentage: Decimal
     recommendation: RecommendationAction
     competitor_count: int
+    recommended_price: Decimal = Decimal("0.00")
+    benchmark_basis: str = ""
+    benchmark_reasoning: str = ""
+    confidence: str = "medium"
+    competitor_room_types: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -61,6 +66,49 @@ class PricingInsightReport:
     generated_at: datetime
     insights: list[PricingInsight]
     summary: str
+    pricing_records: list[PricingRecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class OwnRoomPricingContext:
+    """LLM-facing context for one own room/date benchmark target."""
+
+    room_key: str
+    room_type: str
+    check_in_date: date
+    current_price: Decimal
+
+
+@dataclass(frozen=True)
+class CompetitorRoomPricingContext:
+    """LLM-facing context for one competitor room candidate."""
+
+    record_id: str
+    hotel_id: str
+    hotel_name: str
+    room_type: str
+    check_in_date: date
+    total_price: Decimal
+
+
+@dataclass(frozen=True)
+class PricingMarketContext:
+    """Structured market context used to select comparable rooms."""
+
+    own_hotel_id: str
+    own_rooms: list[OwnRoomPricingContext]
+    competitor_rooms: list[CompetitorRoomPricingContext]
+
+
+@dataclass(frozen=True)
+class ComparableRoomSelection:
+    """LLM-selected competitor records for one own room benchmark."""
+
+    room_key: str
+    comparable_record_ids: list[str]
+    benchmark_basis: str
+    reasoning: str
+    confidence: str = "medium"
 
 
 @dataclass(frozen=True)

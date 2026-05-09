@@ -40,6 +40,16 @@ def _get_float(name: str, default: str) -> float:
     return float(os.getenv(name, default))
 
 
+def _get_optional_float(name: str) -> float | None:
+    value = os.getenv(name)
+    if value in (None, ""):
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"none", "null", "disabled", "off"}:
+        return None
+    return float(value)
+
+
 def _get_date_list(name: str, default: list[date]) -> list[date]:
     values = _get_csv(name)
     if not values:
@@ -74,7 +84,7 @@ class Settings:
     crawler_source: str
     trip_price_api_mode: str
     trip_price_api_base_url: str
-    trip_price_api_timeout_seconds: float
+    trip_price_api_timeout_seconds: float | None
     trip_hotel_urls: list[str]
     trip_hotel_names: list[str]
     trip_check_in_dates: list[date]
@@ -122,7 +132,7 @@ class Settings:
                 "60",
             ),
             llm_temperature=_get_float("HOSPITALITY_LLM_TEMPERATURE", "0.2"),
-            llm_max_tokens=_get_int("HOSPITALITY_LLM_MAX_TOKENS", "500"),
+            llm_max_tokens=_get_int("HOSPITALITY_LLM_MAX_TOKENS", "1200"),
             mcp_server_url=os.getenv(
                 "HOSPITALITY_MCP_SERVER_URL",
                 "http://localhost:8765",
@@ -139,9 +149,8 @@ class Settings:
                 "HOSPITALITY_TRIP_PRICE_API_BASE_URL",
                 "http://localhost:8000",
             ),
-            trip_price_api_timeout_seconds=_get_float(
+            trip_price_api_timeout_seconds=_get_optional_float(
                 "HOSPITALITY_TRIP_PRICE_API_TIMEOUT_SECONDS",
-                "90",
             ),
             trip_hotel_urls=_get_csv(
                 "HOSPITALITY_TRIP_HOTEL_URLS",

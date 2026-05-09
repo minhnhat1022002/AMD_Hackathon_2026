@@ -50,9 +50,14 @@ def main() -> None:
             container["monitoring_service"],
         ).run()
     else:
-        result = container["trip_price_service"].collect(
+        collection = container["trip_price_service"].collect(
             container["trip_price_query"],
         )
+        from hospitality_ai.application.trip_price_service import (
+            to_llm_ready_trip_payload,
+        )
+
+        result = to_llm_ready_trip_payload(collection)
         result = to_jsonable(result)
 
     if args.format == "json":
@@ -73,6 +78,7 @@ def build_container(settings: Settings) -> dict[str, Any]:
     from hospitality_ai.application.recommendation_service import (
         RecommendationService,
     )
+    from hospitality_ai.application.trip_price_service import TripPriceService
     from hospitality_ai.infrastructure.llm.langchain_client import (
         MockLLMClient,
         OpenAICompatibleLLMClient,
@@ -90,7 +96,6 @@ def build_container(settings: Settings) -> dict[str, Any]:
     from hospitality_ai.infrastructure.repositories import (
         InMemoryPricingRepository,
     )
-    from hospitality_ai.application.trip_price_service import TripPriceService
 
     trip_api_client = (
         TripOtaPriceApiClient(
@@ -162,13 +167,15 @@ def _format_text(result: dict[str, Any]) -> str:
         for insight in result["insights"]:
             lines.append(
                 "{room_type} {check_in_date}: current={current_price}, "
-                "competitor_avg={average_competitor_price}, "
-                "gap={price_gap_percentage}%, recommendation={recommendation}"
+                "benchmark={average_competitor_price}, "
+                "gap={price_gap_percentage}%, "
+                "recommendation={recommendation}, "
+                "recommended_price={recommended_price}"
                 .format(**insight),
             )
         return "\n".join(lines).strip()
 
-    if "normalized_records" in result:
+    if "records" in result and "normalized_record_count" in result:
         lines = [
             (
                 "Trip Price API: {total_raw_records} raw records, "
@@ -176,10 +183,11 @@ def _format_text(result: dict[str, Any]) -> str:
             ).format(**result),
             "",
         ]
-        for record in result["normalized_records"]:
+        for record in result["records"]:
             lines.append(
                 "{hotel_id} {room_type} {check_in_date}: "
-                "price={price}, tax={tax}, discount={discount}".format(
+                "price={price_before_tax}, tax={tax}, "
+                "total={total_price}".format(
                     **record,
                 ),
             )

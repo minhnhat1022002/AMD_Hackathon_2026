@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Front Desk Dashboard - Hospitality AI</title>
+    <link rel="stylesheet" href="/static/css/frontdesk-dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>Front Desk Dashboard</h1>
+                <div class="status-indicator" id="connection-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connected</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="staff-info">
+                    <span>Staff ID: FD001</span>
+                    <button id="refresh-btn" class="refresh-btn">🔄 Refresh</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-grid">
+                
+                <!-- Booking Override Panel -->
+                <section class="panel booking-override">
+                    <div class="panel-header">
+                        <h2>🔧 Booking Override</h2>
+                        <div class="panel-actions">
+                            <input type="text" id="reservation-search" placeholder="Search by ID..." class="search-input">
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="reservation-list" id="reservation-list">
+                            <!-- Reservations will be loaded here -->
+                        </div>
+                        <div class="override-form" id="override-form">
+                            <div class="form-container">
+                                <h3>Modify Reservation</h3>
+                                <form id="modify-form">
+                                <div class="form-row">
+                                    <label>Reservation ID:</label>
+                                    <input type="text" id="res-id" readonly>
+                                </div>
+                                <div class="form-row">
+                                    <label>Guest Name:</label>
+                                    <input type="text" id="guest-name">
+                                </div>
+                                <div class="form-row">
+                                    <label>Check-in:</label>
+                                    <input type="date" id="checkin-date">
+                                </div>
+                                <div class="form-row">
+                                    <label>Check-out:</label>
+                                    <input type="date" id="checkout-date">
+                                </div>
+                                <div class="form-row">
+                                    <label>Room Type:</label>
+                                    <select id="room-type">
+                                        <option value="standard">Standard</option>
+                                        <option value="deluxe">Deluxe</option>
+                                        <option value="suite">Suite</option>
+                                    </select>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-primary">Save Changes</button>
+                                    <button type="button" id="cancel-override" class="btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Guest State Monitor -->
+                <section class="panel guest-monitor">
+                    <div class="panel-header">
+                        <h2>👥 Guest Activity Monitor</h2>
+                        <div class="filter-tabs">
+                            <button class="tab-btn active" data-filter="all">All Guests</button>
+                            <button class="tab-btn" data-filter="active">Active</button>
+                            <button class="tab-btn" data-filter="escalated">Escalated</button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="guest-list" id="guest-list">
+                            <!-- Guest activities will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Decision Queue -->
+                <section class="panel decision-queue">
+                    <div class="panel-header">
+                        <h2>⚡ Decision Queue</h2>
+                        <div class="queue-stats">
+                            <span class="stat urgent">Urgent: <span id="urgent-count">0</span></span>
+                            <span class="stat pending">Pending: <span id="pending-count">0</span></span>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="case-list" id="case-list">
+                            <!-- Decision cases will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+        <!-- Case Detail Modal -->
+        <div class="modal" id="case-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Case Details</h3>
+                    <button class="modal-close" id="close-modal">&times;</button>
+                </div>
+                <div class="modal-body" id="case-details">
+                    <!-- Case details will be loaded here -->
+                </div>
+                <div class="modal-actions" id="case-actions">
+                    <!-- Action buttons will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/frontdesk-dashboard.js"></script>
+</body>
+</html>

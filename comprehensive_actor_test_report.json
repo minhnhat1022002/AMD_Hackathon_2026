@@ -1,0 +1,55 @@
+{
+  "test_summary": {
+    "total_tests": 5,
+    "passed": 4,
+    "failed": 1,
+    "success_rate": 80.0,
+    "timestamp": "2026-05-11T02:30:30.822790"
+  },
+  "test_results": [
+    {
+      "test_name": "Guest Actor Scenarios",
+      "success": true,
+      "details": "API successful: 25/25 interactions",
+      "timestamp": "2026-05-11T02:30:26.538053"
+    },
+    {
+      "test_name": "Front Desk Staff Scenarios",
+      "success": true,
+      "details": "Tested 3 roles \u00d7 5 scenarios = 15 interactions",
+      "timestamp": "2026-05-11T02:30:27.451374"
+    },
+    {
+      "test_name": "Management Decision Scenarios",
+      "success": false,
+      "details": "API successful: 0/10 decisions",
+      "timestamp": "2026-05-11T02:30:28.071502"
+    },
+    {
+      "test_name": "Rule-Based Staff Scenarios",
+      "success": true,
+      "details": "Tested 6 rule-based tasks = 6 tasks completed",
+      "timestamp": "2026-05-11T02:30:29.679560"
+    },
+    {
+      "test_name": "Multi-Actor Integration",
+      "success": true,
+      "details": "Complete workflow with 4 actors, 3 events",
+      "timestamp": "2026-05-11T02:30:30.822790"
+    }
+  ],
+  "actor_statistics": {},
+  "workflow_events": [],
+  "api_usage": {
+    "operations_api": 0,
+    "management_api": 0,
+    "revenue_api": 0,
+    "admin_api": 0
+  },
+  "coverage_analysis": {
+    "llm_actors_tested": 3,
+    "rule_based_actors_tested": 3,
+    "total_scenarios_covered": 3,
+    "integration_workflows": 1
+  }
+}

@@ -1,0 +1,482 @@
+{
+  "timestamp": "2026-05-11T00:27:18.839911",
+  "total_events": 14,
+  "scenarios": [
+    {
+      "scenario": "Guest Booking",
+      "events": [
+        {
+          "timestamp": "2026-05-11T00:27:11.755822",
+          "event_type": "guest_inquiry",
+          "guest_id": "G123",
+          "message": "I'd like to book a deluxe room for this weekend",
+          "from": "guest_chat",
+          "to": "guest_agent",
+          "details": "Guest booking inquiry received"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:12.258985",
+          "event_type": "agent_routing",
+          "guest_id": "G123",
+          "intent": "booking",
+          "from": "guest_agent",
+          "to": "booking_agent",
+          "details": "Guest inquiry routed to booking agent"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:12.771838",
+          "event_type": "booking_created",
+          "booking_id": "B20260511001",
+          "guest_id": "G123",
+          "room_type": "deluxe",
+          "from": "booking_agent",
+          "to": "revenue_agent",
+          "details": "Booking created for deluxe room"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:13.287456",
+          "event_type": "pricing_override",
+          "override_id": "O20260511FD17CA71",
+          "room_type": "deluxe",
+          "new_price": 180.0,
+          "from": "revenue_agent",
+          "to": "state_layer",
+          "details": "Weekend pricing override applied"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:13.800865",
+          "event_type": "task_created",
+          "task_id": "T202605119F887622",
+          "staff_id": "H001",
+          "task_type": "housekeeping",
+          "from": "orchestrator",
+          "to": "operations_agent",
+          "details": "Housekeeping task created for room preparation"
+        }
+      ],
+      "summary": {
+        "guest_id": "G123",
+        "booking_id": "B20260511001",
+        "tasks_created": 1,
+        "pricing_overrides": 1,
+        "workflow_steps": 5
+      }
+    },
+    {
+      "scenario": "Service Escalation",
+      "events": [
+        {
+          "timestamp": "2026-05-11T00:27:14.302388",
+          "event_type": "service_request",
+          "guest_id": "G456",
+          "room_id": "305",
+          "issue_type": "maintenance_urgent",
+          "from": "guest_chat",
+          "to": "guest_agent",
+          "details": "Guest reports AC not working in room 305"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:14.802865",
+          "event_type": "agent_routing",
+          "guest_id": "G456",
+          "intent": "service",
+          "from": "guest_agent",
+          "to": "orchestrator",
+          "details": "Service request routed to operations"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:15.304555",
+          "event_type": "urgent_task_created",
+          "task_id": "T202605116065E384",
+          "staff_id": "M001",
+          "priority": "urgent",
+          "from": "operations_agent",
+          "to": "staff_m001",
+          "details": "Urgent maintenance task assigned"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:15.805776",
+          "event_type": "task_issue_reported",
+          "task_id": "T202605116065E384",
+          "issue_type": "guest_complaint",
+          "from": "operations_agent",
+          "to": "decision_agent",
+          "details": "Guest escalation requires management intervention"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:16.321252",
+          "event_type": "escalation_case_created",
+          "case_id": "C202605111076ADFE",
+          "severity": "high",
+          "from": "decision_agent",
+          "to": "management_dashboard",
+          "details": "Case escalated to management"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:16.822762",
+          "event_type": "manual_decision",
+          "case_id": "C202605111076ADFE",
+          "decision": "approve_room_upgrade",
+          "made_by": "manager_001",
+          "from": "management_dashboard",
+          "to": "booking_agent",
+          "details": "Room upgrade approved as compensation"
+        }
+      ],
+      "summary": {
+        "guest_id": "G456",
+        "case_id": "C202605111076ADFE",
+        "tasks_created": 1,
+        "escalations": 1,
+        "decisions_made": 1,
+        "workflow_steps": 6
+      }
+    },
+    {
+      "scenario": "Admin Configuration",
+      "events": [
+        {
+          "timestamp": "2026-05-11T00:27:17.336688",
+          "event_type": "config_update",
+          "config_key": "dynamic_pricing_enabled",
+          "updated_by": "admin_001",
+          "from": "admin_panel",
+          "to": "state_layer",
+          "details": "Dynamic pricing configuration updated"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:17.837863",
+          "event_type": "workflow_reload",
+          "workflows_reloaded": 5,
+          "from": "admin_panel",
+          "to": "orchestrator",
+          "details": "Workflows reloaded with new configuration"
+        },
+        {
+          "timestamp": "2026-05-11T00:27:18.339417",
+          "event_type": "strategy_activated",
+          "strategy_type": "dynamic_pricing",
+          "from": "revenue_agent",
+          "to": "pricing_engine",
+          "details": "Dynamic pricing strategy activated"
+        }
+      ],
+      "summary": {
+        "configs_updated": 1,
+        "workflows_reloaded": 5,
+        "strategies_activated": 1,
+        "workflow_steps": 3
+      }
+    }
+  ],
+  "agents_involved": [
+    "guest_agent",
+    "booking_agent",
+    "operations_agent",
+    "decision_agent",
+    "revenue_agent",
+    "orchestrator"
+  ],
+  "apis_used": {
+    "operations": 2,
+    "management": 1,
+    "revenue": 1,
+    "admin": 1
+  },
+  "workflow_events": [
+    {
+      "timestamp": "2026-05-11T00:27:11.755822",
+      "event_type": "guest_inquiry",
+      "guest_id": "G123",
+      "message": "I'd like to book a deluxe room for this weekend",
+      "from": "guest_chat",
+      "to": "guest_agent",
+      "details": "Guest booking inquiry received"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:12.258985",
+      "event_type": "agent_routing",
+      "guest_id": "G123",
+      "intent": "booking",
+      "from": "guest_agent",
+      "to": "booking_agent",
+      "details": "Guest inquiry routed to booking agent"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:12.771838",
+      "event_type": "booking_created",
+      "booking_id": "B20260511001",
+      "guest_id": "G123",
+      "room_type": "deluxe",
+      "from": "booking_agent",
+      "to": "revenue_agent",
+      "details": "Booking created for deluxe room"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:13.287456",
+      "event_type": "pricing_override",
+      "override_id": "O20260511FD17CA71",
+      "room_type": "deluxe",
+      "new_price": 180.0,
+      "from": "revenue_agent",
+      "to": "state_layer",
+      "details": "Weekend pricing override applied"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:13.800865",
+      "event_type": "task_created",
+      "task_id": "T202605119F887622",
+      "staff_id": "H001",
+      "task_type": "housekeeping",
+      "from": "orchestrator",
+      "to": "operations_agent",
+      "details": "Housekeeping task created for room preparation"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:14.302388",
+      "event_type": "service_request",
+      "guest_id": "G456",
+      "room_id": "305",
+      "issue_type": "maintenance_urgent",
+      "from": "guest_chat",
+      "to": "guest_agent",
+      "details": "Guest reports AC not working in room 305"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:14.802865",
+      "event_type": "agent_routing",
+      "guest_id": "G456",
+      "intent": "service",
+      "from": "guest_agent",
+      "to": "orchestrator",
+      "details": "Service request routed to operations"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:15.304555",
+      "event_type": "urgent_task_created",
+      "task_id": "T202605116065E384",
+      "staff_id": "M001",
+      "priority": "urgent",
+      "from": "operations_agent",
+      "to": "staff_m001",
+      "details": "Urgent maintenance task assigned"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:15.805776",
+      "event_type": "task_issue_reported",
+      "task_id": "T202605116065E384",
+      "issue_type": "guest_complaint",
+      "from": "operations_agent",
+      "to": "decision_agent",
+      "details": "Guest escalation requires management intervention"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:16.321252",
+      "event_type": "escalation_case_created",
+      "case_id": "C202605111076ADFE",
+      "severity": "high",
+      "from": "decision_agent",
+      "to": "management_dashboard",
+      "details": "Case escalated to management"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:16.822762",
+      "event_type": "manual_decision",
+      "case_id": "C202605111076ADFE",
+      "decision": "approve_room_upgrade",
+      "made_by": "manager_001",
+      "from": "management_dashboard",
+      "to": "booking_agent",
+      "details": "Room upgrade approved as compensation"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:17.336688",
+      "event_type": "config_update",
+      "config_key": "dynamic_pricing_enabled",
+      "updated_by": "admin_001",
+      "from": "admin_panel",
+      "to": "state_layer",
+      "details": "Dynamic pricing configuration updated"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:17.837863",
+      "event_type": "workflow_reload",
+      "workflows_reloaded": 5,
+      "from": "admin_panel",
+      "to": "orchestrator",
+      "details": "Workflows reloaded with new configuration"
+    },
+    {
+      "timestamp": "2026-05-11T00:27:18.339417",
+      "event_type": "strategy_activated",
+      "strategy_type": "dynamic_pricing",
+      "from": "revenue_agent",
+      "to": "pricing_engine",
+      "details": "Dynamic pricing strategy activated"
+    }
+  ],
+  "graph_data": {
+    "nodes": [
+      {
+        "id": "guest_chat",
+        "label": "Guest Chat",
+        "type": "interface",
+        "events": 2
+      },
+      {
+        "id": "guest_agent",
+        "label": "Guest Agent",
+        "type": "agent",
+        "events": 4
+      },
+      {
+        "id": "booking_agent",
+        "label": "Booking Agent",
+        "type": "agent",
+        "events": 3
+      },
+      {
+        "id": "operations_agent",
+        "label": "Operations Agent",
+        "type": "agent",
+        "events": 3
+      },
+      {
+        "id": "decision_agent",
+        "label": "Decision Agent",
+        "type": "agent",
+        "events": 2
+      },
+      {
+        "id": "revenue_agent",
+        "label": "Revenue Agent",
+        "type": "agent",
+        "events": 3
+      },
+      {
+        "id": "orchestrator",
+        "label": "Orchestrator",
+        "type": "agent",
+        "events": 3
+      },
+      {
+        "id": "management_dashboard",
+        "label": "Management Dashboard",
+        "type": "interface",
+        "events": 2
+      },
+      {
+        "id": "admin_panel",
+        "label": "Admin Panel",
+        "type": "interface",
+        "events": 2
+      },
+      {
+        "id": "state_layer",
+        "label": "State Layer",
+        "type": "system",
+        "events": 2
+      }
+    ],
+    "edges": [
+      {
+        "from": "guest_chat",
+        "to": "guest_agent",
+        "event_type": "guest_inquiry",
+        "timestamp": "2026-05-11T00:27:11.755822",
+        "details": "Guest booking inquiry received"
+      },
+      {
+        "from": "guest_agent",
+        "to": "booking_agent",
+        "event_type": "agent_routing",
+        "timestamp": "2026-05-11T00:27:12.258985",
+        "details": "Guest inquiry routed to booking agent"
+      },
+      {
+        "from": "booking_agent",
+        "to": "revenue_agent",
+        "event_type": "booking_created",
+        "timestamp": "2026-05-11T00:27:12.771838",
+        "details": "Booking created for deluxe room"
+      },
+      {
+        "from": "revenue_agent",
+        "to": "state_layer",
+        "event_type": "pricing_override",
+        "timestamp": "2026-05-11T00:27:13.287456",
+        "details": "Weekend pricing override applied"
+      },
+      {
+        "from": "orchestrator",
+        "to": "operations_agent",
+        "event_type": "task_created",
+        "timestamp": "2026-05-11T00:27:13.800865",
+        "details": "Housekeeping task created for room preparation"
+      },
+      {
+        "from": "guest_chat",
+        "to": "guest_agent",
+        "event_type": "service_request",
+        "timestamp": "2026-05-11T00:27:14.302388",
+        "details": "Guest reports AC not working in room 305"
+      },
+      {
+        "from": "guest_agent",
+        "to": "orchestrator",
+        "event_type": "agent_routing",
+        "timestamp": "2026-05-11T00:27:14.802865",
+        "details": "Service request routed to operations"
+      },
+      {
+        "from": "operations_agent",
+        "to": "staff_m001",
+        "event_type": "urgent_task_created",
+        "timestamp": "2026-05-11T00:27:15.304555",
+        "details": "Urgent maintenance task assigned"
+      },
+      {
+        "from": "operations_agent",
+        "to": "decision_agent",
+        "event_type": "task_issue_reported",
+        "timestamp": "2026-05-11T00:27:15.805776",
+        "details": "Guest escalation requires management intervention"
+      },
+      {
+        "from": "decision_agent",
+        "to": "management_dashboard",
+        "event_type": "escalation_case_created",
+        "timestamp": "2026-05-11T00:27:16.321252",
+        "details": "Case escalated to management"
+      },
+      {
+        "from": "management_dashboard",
+        "to": "booking_agent",
+        "event_type": "manual_decision",
+        "timestamp": "2026-05-11T00:27:16.822762",
+        "details": "Room upgrade approved as compensation"
+      },
+      {
+        "from": "admin_panel",
+        "to": "state_layer",
+        "event_type": "config_update",
+        "timestamp": "2026-05-11T00:27:17.336688",
+        "details": "Dynamic pricing configuration updated"
+      },
+      {
+        "from": "admin_panel",
+        "to": "orchestrator",
+        "event_type": "workflow_reload",
+        "timestamp": "2026-05-11T00:27:17.837863",
+        "details": "Workflows reloaded with new configuration"
+      },
+      {
+        "from": "revenue_agent",
+        "to": "pricing_engine",
+        "event_type": "strategy_activated",
+        "timestamp": "2026-05-11T00:27:18.339417",
+        "details": "Dynamic pricing strategy activated"
+      }
+    ]
+  }
+}

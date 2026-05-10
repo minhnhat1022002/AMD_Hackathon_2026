@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Chat - Hospitality AI</title>
+    <link rel="stylesheet" href="/static/css/guest-chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <h1>Guest Chat</h1>
+            <div class="guest-selector">
+                <label for="guest-id">Guest ID:</label>
+                <select id="guest-id">
+                    <option value="G123">G123</option>
+                    <option value="G456">G456</option>
+                    <option value="G789">G789</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="system-message">
+                <div class="message-content">
+                    Welcome to Hospitality AI! How can I help you today?
+                </div>
+                <div class="message-time">System</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h3>Quick Actions:</h3>
+            <div class="action-buttons">
+                <button class="quick-btn" data-message="Do you have rooms tomorrow?">Check Availability</button>
+                <button class="quick-btn" data-message="Book 2 nights for me">Book Room</button>
+                <button class="quick-btn" data-message="I need extra towels">Request Service</button>
+                <button class="quick-btn" data-message="Room is dirty">Report Issue</button>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    id="message-input" 
+                    placeholder="Type your message here..."
+                    rows="3"
+                ></textarea>
+                <button id="send-button" class="send-btn">
+                    <span id="send-text">Send</span>
+                    <div id="loading-spinner" class="spinner" style="display: none;"></div>
+                </button>
+            </div>
+            <div class="status-indicator" id="status-indicator">
+                <span id="status-text">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/guest-chat.js"></script>
+</body>
+</html>
